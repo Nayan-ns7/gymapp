@@ -23,6 +23,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [currentTab, setCurrentTab] = useState('members'); // 'members', 'app-access'
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -92,6 +93,14 @@ export default function App() {
       });
     } catch (e) {
       console.error("Error activating subscription:", e);
+    }
+  };
+
+  const handleSetOnline = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'users', id), { isSubscribed: true });
+    } catch (e) {
+      console.error("Error setting online:", e);
     }
   };
 
@@ -173,8 +182,11 @@ export default function App() {
           <span>GymFit Admin</span>
         </div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <a href="#" className="nav-link active">
+          <a href="#" className={`nav-link ${currentTab === 'members' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('members'); }}>
             👥 Members
+          </a>
+          <a href="#" className={`nav-link ${currentTab === 'app-access' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('app-access'); }}>
+            🚫 Disable App
           </a>
           <a href="#" className="nav-link">
             📈 Analytics
@@ -190,93 +202,177 @@ export default function App() {
 
       {/* Main Content */}
       <main className="main-content">
-        <header className="header">
-          <div>
-            <h1 className="header-title">Members Directory</h1>
-            <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Manage your gym subscriptions and users in real-time.</p>
-          </div>
-          <div className="header-actions">
-            <button className="btn btn-outline" onClick={() => setFilter('all')} style={{ borderColor: filter === 'all' ? 'var(--accent-primary)' : '' }}>All</button>
-            <button className="btn btn-outline" onClick={() => setFilter('active')} style={{ borderColor: filter === 'active' ? 'var(--accent-primary)' : '' }}>Active</button>
-            <button className="btn btn-outline" onClick={() => setFilter('inactive')} style={{ borderColor: filter === 'inactive' ? 'var(--accent-primary)' : '' }}>Inactive</button>
-          </div>
-        </header>
+        {currentTab === 'members' && (
+          <>
+            <header className="header">
+              <div>
+                <h1 className="header-title">Members Directory</h1>
+                <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Manage your gym subscriptions and users in real-time.</p>
+              </div>
+              <div className="header-actions">
+                <button className="btn btn-outline" onClick={() => setFilter('all')} style={{ borderColor: filter === 'all' ? 'var(--accent-primary)' : '' }}>All</button>
+                <button className="btn btn-outline" onClick={() => setFilter('active')} style={{ borderColor: filter === 'active' ? 'var(--accent-primary)' : '' }}>Active</button>
+                <button className="btn btn-outline" onClick={() => setFilter('inactive')} style={{ borderColor: filter === 'inactive' ? 'var(--accent-primary)' : '' }}>Inactive</button>
+              </div>
+            </header>
 
-        {/* Stats Grid */}
-        <div className="stats-grid">
-          <div className="stat-card glass-panel">
-            <span className="stat-icon" style={{fontSize: '32px'}}>👥</span>
-            <div className="stat-value">{totalUsers}</div>
-            <div className="stat-label">Total Registered Users</div>
-          </div>
-          <div className="stat-card glass-panel" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
-            <span className="stat-icon" style={{fontSize: '32px', opacity: 1}}>✅</span>
-            <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{activeSubs}</div>
-            <div className="stat-label">Active Subscriptions</div>
-          </div>
-          <div className="stat-card glass-panel">
-            <span className="stat-icon" style={{fontSize: '32px', opacity: 0.8}}>❌</span>
-            <div className="stat-value">{totalUsers - activeSubs}</div>
-            <div className="stat-label">Inactive Members</div>
-          </div>
-        </div>
-
-        {/* Data Table */}
-        <div className="data-table-container glass-panel">
-          <div className="table-header">
-            <h2 style={{ fontSize: '18px', fontWeight: 600 }}>User List</h2>
-            <div className="search-box">
-              <span>🔍</span>
-              <input 
-                className="search-input" 
-                placeholder="Search by name or email..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            {/* Stats Grid */}
+            <div className="stats-grid">
+              <div className="stat-card glass-panel">
+                <span className="stat-icon" style={{fontSize: '32px'}}>👥</span>
+                <div className="stat-value">{totalUsers}</div>
+                <div className="stat-label">Total Registered Users</div>
+              </div>
+              <div className="stat-card glass-panel" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                <span className="stat-icon" style={{fontSize: '32px', opacity: 1}}>✅</span>
+                <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{activeSubs}</div>
+                <div className="stat-label">Active Subscriptions</div>
+              </div>
+              <div className="stat-card glass-panel">
+                <span className="stat-icon" style={{fontSize: '32px', opacity: 0.8}}>❌</span>
+                <div className="stat-value">{totalUsers - activeSubs}</div>
+                <div className="stat-label">Inactive Members</div>
+              </div>
             </div>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Member Name</th>
-                  <th>Status</th>
-                  <th>Subscription Ends</th>
-                  <th>Last Active</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length > 0 ? filteredUsers.map((user) => (
-                  <tr key={user.id} onClick={() => setSelectedUser(user)}>
-                    <td>
-                      <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.name}</div>
-                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{user.email}</div>
-                    </td>
-                    <td>
-                      {user.isSubscribed ? (
-                        <span className="status-badge status-active">✅ Active</span>
-                      ) : (
-                        <span className="status-badge status-inactive">❌ Expired</span>
-                      )}
-                    </td>
-                    <td style={{ color: user.isSubscribed ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                      {formatDate(user.subscriptionEnd)}
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>
-                      {formatDateTime(user.lastActive)}
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-                      No members found matching your criteria.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+
+            {/* Data Table */}
+            <div className="data-table-container glass-panel">
+              <div className="table-header">
+                <h2 style={{ fontSize: '18px', fontWeight: 600 }}>User List</h2>
+                <div className="search-box">
+                  <span>🔍</span>
+                  <input 
+                    className="search-input" 
+                    placeholder="Search by name or email..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Member Name</th>
+                      <th>Status</th>
+                      <th>Subscription Ends</th>
+                      <th>Last Active</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length > 0 ? filteredUsers.map((user) => (
+                      <tr key={user.id} onClick={() => setSelectedUser(user)}>
+                        <td>
+                          <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.name}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{user.email}</div>
+                        </td>
+                        <td>
+                          {user.isSubscribed ? (
+                            <span className="status-badge status-active">✅ Active</span>
+                          ) : (
+                            <span className="status-badge status-inactive">❌ Expired</span>
+                          )}
+                        </td>
+                        <td style={{ color: user.isSubscribed ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                          {formatDate(user.subscriptionEnd)}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)' }}>
+                          {formatDateTime(user.lastActive)}
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                          No members found matching your criteria.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {currentTab === 'app-access' && (
+          <>
+            <header className="header">
+              <div>
+                <h1 className="header-title">App Access Control</h1>
+                <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Instantly lock or unlock app access for specific Firebase users.</p>
+              </div>
+              <div className="header-actions">
+                <button className="btn btn-outline" onClick={() => setFilter('all')} style={{ borderColor: filter === 'all' ? 'var(--accent-primary)' : '' }}>All</button>
+                <button className="btn btn-outline" onClick={() => setFilter('active')} style={{ borderColor: filter === 'active' ? 'var(--accent-primary)' : '' }}>Online</button>
+                <button className="btn btn-outline" onClick={() => setFilter('inactive')} style={{ borderColor: filter === 'inactive' ? 'var(--accent-primary)' : '' }}>Offline</button>
+              </div>
+            </header>
+            
+            <div className="data-table-container glass-panel">
+              <div className="table-header">
+                <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Firebase Authenticated Users</h2>
+                <div className="search-box">
+                  <span>🔍</span>
+                  <input 
+                    className="search-input" 
+                    placeholder="Search accounts..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Account Info</th>
+                      <th>App Status</th>
+                      <th>Last Active</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length > 0 ? filteredUsers.map((user) => (
+                      <tr key={user.id} style={{ cursor: 'default' }}>
+                        <td>
+                          <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.name}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{user.email}</div>
+                        </td>
+                        <td>
+                          {user.isSubscribed ? (
+                            <span className="status-badge status-active">🟢 Online</span>
+                          ) : (
+                            <span className="status-badge status-inactive">🔴 Offline</span>
+                          )}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)' }}>
+                          {formatDateTime(user.lastActive)}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {user.isSubscribed ? (
+                            <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '14px' }} onClick={(e) => { e.stopPropagation(); handleStopSubscription(user.id); }}>
+                              🔴 Set Offline
+                            </button>
+                          ) : (
+                            <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '14px' }} onClick={(e) => { e.stopPropagation(); handleSetOnline(user.id); }}>
+                              🟢 Set Online
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                          No Firebase users found matching your search.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       {/* User Detail Modal */}
