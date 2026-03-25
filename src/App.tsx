@@ -42,7 +42,7 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
     
-    const usersRef = collection(db, 'users');
+    const usersRef = collection(db, 'app_users');
     const unsubscribe = onSnapshot(usersRef, (snapshot: any) => {
       const usersData = snapshot.docs.map((doc: any) => ({
         id: doc.id,
@@ -69,7 +69,9 @@ export default function App() {
   // Filter & Search
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
-      const matchSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const name = (u.name || u.email || u.id || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const matchSearch = name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
       const matchFilter = filter === 'all' ? true : filter === 'active' ? u.isSubscribed : !u.isSubscribed;
       return matchSearch && matchFilter;
     });
@@ -77,7 +79,7 @@ export default function App() {
 
   const handleStopSubscription = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'users', id), { isSubscribed: false });
+      await updateDoc(doc(db, 'app_users', id), { isSubscribed: false });
     } catch (e) {
       console.error("Error stopping subscription:", e);
     }
@@ -87,7 +89,7 @@ export default function App() {
     try {
       const newEnd = new Date();
       newEnd.setMonth(newEnd.getMonth() + months);
-      await updateDoc(doc(db, 'users', id), { 
+      await updateDoc(doc(db, 'app_users', id), { 
         isSubscribed: true, 
         subscriptionEnd: newEnd 
       });
@@ -98,7 +100,7 @@ export default function App() {
 
   const handleSetOnline = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'users', id), { isSubscribed: true });
+      await updateDoc(doc(db, 'app_users', id), { isSubscribed: true });
     } catch (e) {
       console.error("Error setting online:", e);
     }
@@ -263,8 +265,8 @@ export default function App() {
                     {filteredUsers.length > 0 ? filteredUsers.map((user) => (
                       <tr key={user.id} onClick={() => setSelectedUser(user)}>
                         <td>
-                          <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.name}</div>
-                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{user.email}</div>
+                          <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.name || user.email || user.id}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{user.email || 'No email'}</div>
                         </td>
                         <td>
                           {user.isSubscribed ? (
@@ -335,8 +337,8 @@ export default function App() {
                     {filteredUsers.length > 0 ? filteredUsers.map((user) => (
                       <tr key={user.id} style={{ cursor: 'default' }}>
                         <td>
-                          <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.name}</div>
-                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{user.email}</div>
+                          <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.name || user.email || user.id}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{user.email || 'No email'}</div>
                         </td>
                         <td>
                           {user.isSubscribed ? (
@@ -381,9 +383,9 @@ export default function App() {
           <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <div className="user-avatar">{selectedUser.name.charAt(0)}</div>
-                <h3 className="modal-title">{selectedUser.name}</h3>
-                <p className="modal-subtitle">{selectedUser.email}</p>
+                <div className="user-avatar">{(selectedUser.name || selectedUser.email || '?').charAt(0)}</div>
+                <h3 className="modal-title">{selectedUser.name || selectedUser.email || selectedUser.id}</h3>
+                <p className="modal-subtitle">{selectedUser.email || 'No email'}</p>
                 <div style={{ marginTop: '12px' }}>
                   {selectedUser.isSubscribed ? (
                         <span className="status-badge status-active">✅ Active Subscription</span>
