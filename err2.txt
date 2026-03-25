@@ -1,0 +1,8 @@
+src/App.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/App.tsx(2,56): error TS7016: Could not find a declaration file for module 'firebase/firestore'. 'C:/Users/HP/Desktop/nayan/gym-admin/node_modules/firebase/firestore/dist/esm/index.esm.js' implicitly has an 'any' type.
+  If the 'firebase' package actually exposes this module, try adding a new declaration (.d.ts) file containing `declare module 'firebase/firestore';`
+src/App.tsx(27,47): error TS7006: Parameter 'snapshot' implicitly has an 'any' type.
+src/App.tsx(28,43): error TS7006: Parameter 'doc' implicitly has an 'any' type.
+src/App.tsx(36,40): error TS7006: Parameter 'u' implicitly has an 'any' type.
+src/firebase.ts(2,30): error TS7016: Could not find a declaration file for module 'firebase/firestore'. 'C:/Users/HP/Desktop/nayan/gym-admin/node_modules/firebase/firestore/dist/esm/index.esm.js' implicitly has an 'any' type.
+  If the 'firebase' package actually exposes this module, try adding a new declaration (.d.ts) file containing `declare module 'firebase/firestore';`
