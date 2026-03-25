@@ -1,7 +1,7 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { db, auth } from './firebase';
 
 // Removed static mock data in favor of Firestore real-time data.
 
@@ -23,7 +23,23 @@ export default function App() {
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    
     const usersRef = collection(db, 'users');
     const unsubscribe = onSnapshot(usersRef, (snapshot: any) => {
       const usersData = snapshot.docs.map((doc: any) => ({
@@ -42,7 +58,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]);
 
   // Stats
   const totalUsers = users.length;
@@ -78,6 +94,64 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>Loading application...</div>;
+  }
+
+  if (!currentUser) {
+    const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        setLoginError('');
+        await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      } catch (err: any) {
+        setLoginError(err.message || 'Failed to log in');
+      }
+    };
+
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', padding: '20px' }}>
+        <div className="glass-panel" style={{ padding: '40px', width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '48px' }}>🛡️</span>
+            <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '16px' }}>GymFit Admin</h2>
+            <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>Please log in to manage your gym.</p>
+          </div>
+          {loginError && (
+            <div style={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '8px', fontSize: '14px', textAlign: 'center' }}>
+              {loginError}
+            </div>
+          )}
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <input 
+                type="email" 
+                placeholder="Admin Email" 
+                value={loginEmail} 
+                onChange={e => setLoginEmail(e.target.value)} 
+                required
+                className="search-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <input 
+                type="password" 
+                placeholder="Password" 
+                value={loginPassword} 
+                onChange={e => setLoginPassword(e.target.value)} 
+                required
+                className="search-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '8px' }}>Login to Dashboard</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Sidebar */}
@@ -95,6 +169,9 @@ export default function App() {
           </a>
           <a href="#" className="nav-link">
             ⚙️ Settings
+          </a>
+          <a href="#" className="nav-link" onClick={(e) => { e.preventDefault(); signOut(auth); }} style={{ color: 'var(--danger)', marginTop: '24px' }}>
+            🚪 Logout
           </a>
         </nav>
       </aside>
