@@ -99,12 +99,18 @@ export default function App() {
     return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>Loading application...</div>;
   }
 
-  if (!currentUser) {
+  const ADMIN_UID = 'SbRsr50Sk5ViXx3IolsPiMCi9TI2';
+
+  if (!currentUser || currentUser.uid !== ADMIN_UID) {
     const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       try {
         setLoginError('');
-        await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+        const cred = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+        if (cred.user.uid !== ADMIN_UID) {
+           await signOut(auth);
+           setLoginError('Access Denied: You are not an authorized administrator.');
+        }
       } catch (err: any) {
         setLoginError(err.message || 'Failed to log in');
       }
@@ -121,6 +127,11 @@ export default function App() {
           {loginError && (
             <div style={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '8px', fontSize: '14px', textAlign: 'center' }}>
               {loginError}
+            </div>
+          )}
+          {currentUser && currentUser.uid !== ADMIN_UID && !loginError && (
+            <div style={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '8px', fontSize: '14px', textAlign: 'center' }}>
+              Access Denied: You are not authorized.
             </div>
           )}
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
