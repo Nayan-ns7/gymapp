@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { db, auth } from './firebase';
@@ -23,6 +23,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUserMembers, setSelectedUserMembers] = useState<any[]>([]);
   const [currentTab, setCurrentTab] = useState('members'); // 'members', 'app-access'
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -42,7 +43,7 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
     
-    const usersRef = collection(db, 'app_users');
+    const usersRef = collection(db, 'users');
     const unsubscribe = onSnapshot(usersRef, (snapshot: any) => {
       const usersData = snapshot.docs.map((doc: any) => ({
         id: doc.id,
@@ -62,6 +63,27 @@ export default function App() {
     return () => unsubscribe();
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!selectedUser) {
+      setSelectedUserMembers([]);
+      return;
+    }
+    
+    // Fetch members subcollection for the selected user
+    const membersRef = collection(db, 'users', selectedUser.id, 'members');
+    const unsubscribe = onSnapshot(membersRef, (snapshot: any) => {
+      const membersData = snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setSelectedUserMembers(membersData);
+    }, (error: any) => {
+      console.error("Error fetching sub-members:", error);
+    });
+
+    return () => unsubscribe();
+  }, [selectedUser]);
+
   // Stats
   const totalUsers = users.length;
   const activeSubs = users.filter((u) => u.isSubscribed).length;
@@ -79,7 +101,7 @@ export default function App() {
 
   const handleStopSubscription = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'app_users', id), { isSubscribed: false });
+      await updateDoc(doc(db, 'users', id), { isSubscribed: false });
     } catch (e) {
       console.error("Error stopping subscription:", e);
     }
@@ -89,9 +111,9 @@ export default function App() {
     try {
       const newEnd = new Date();
       newEnd.setMonth(newEnd.getMonth() + months);
-      await updateDoc(doc(db, 'app_users', id), { 
+      await updateDoc(doc(db, 'users', id), { 
         isSubscribed: true, 
-        subscriptionEnd: newEnd 
+        subscriptionEnd: Timestamp.fromDate(newEnd) 
       });
     } catch (e) {
       console.error("Error activating subscription:", e);
@@ -100,7 +122,7 @@ export default function App() {
 
   const handleSetOnline = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'app_users', id), { isSubscribed: true });
+      await updateDoc(doc(db, 'users', id), { isSubscribed: true });
     } catch (e) {
       console.error("Error setting online:", e);
     }
@@ -417,6 +439,25 @@ export default function App() {
               <div className="info-item">
                 <span className="info-label">Total Usage Days</span>
                 <span className="info-value">{selectedUser.totalUsageDays} days</span>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-light)', paddingTop: '24px' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>Gym Members ({selectedUserMembers.length})</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', maxHeight: '300px', overflowY: 'auto', paddingRight: '8px' }}>
+                {selectedUserMembers.length > 0 ? selectedUserMembers.map(member => (
+                  <div key={member.id} className="glass-panel" style={{ padding: '12px', background: 'rgba(255,255,255,0.03)' }}>
+                    <div style={{ fontWeight: 500, fontSize: '14px' }}>{member.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{member.planName || 'No Plan'}</div>
+                    <div style={{ fontSize: '11px', color: member.status === 'Active' ? 'var(--accent-primary)' : 'var(--danger)', marginTop: '4px', fontWeight: 600 }}>
+                      {member.status || 'Unknown'}
+                    </div>
+                  </div>
+                )) : (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    No members found in this gym.
+                  </div>
+                )}
               </div>
             </div>
 
